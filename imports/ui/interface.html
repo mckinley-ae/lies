@@ -1,0 +1,95 @@
+<template name="interface">
+{{#if logged_in}}   <!-- checks to see if user is logged in-->
+  {{#if user_in_game}}    <!-- checks to see if user is in game -->
+    IN GAME: <b>{{current_game_code}} </b> <!-- displays current game code-->
+    CURRENT TURN: <b>{{current_turn}} </b>
+    <br><br>
+    Current Players:
+    <ul>
+        {{#each players.players}}
+        <li>{{this.username}}
+            {{#if this.is_owner}} <b> [GAME LEADER]</b> {{/if}}
+        </li>
+        {{/each}}
+    </ul>
+
+    {{#if is_owner}}      <!-- checks to see if user is owner of game -->
+
+      shows owner options:
+        <button class="start-game" value={{current_game_code}}>Start Game</button>
+        <button class="end-game" value={{current_game_code}}>End Game</button>
+        <button class="advance-turn" value={{current_game_code}}>Advance Turn</button>
+
+    {{else}}               <!--is regular player -->
+    REGULAR PLAYER - waiting for {{players.owner}} to start
+    {{/if}}
+
+
+  {{else}}
+    <button class="toggle-new-game">Create New Game</button>
+    <form class='join-game'>
+      <input type='text' name='text'>
+      <input type='submit'>
+    </form>
+  {{/if}}
+{{else}}
+LOG IN TO PLAY THE GAME OF LIES FUCKER
+{{/if}}
+
+  <ul class="nav nav-pills">
+    <li data-template="action" role="presentation" class="active"><a href="#" id="action">action</a></li>
+    <li data-template="result" role="presentation"><a href="#" id="result">result</a></li>
+    <li data-template="status" role="presentation"><a href="#" id="status">status</a></li>
+  </ul>
+
+  {{> Template.dynamic template=chooseTemplate data=getgame}}
+</template>
+
+
+
+
+<template name="content">
+  <h3 class="page-header" style="text-transform: capitalize;">{{this.contentType}}</h3>
+
+  <ul class="list-group">
+    {{#each this.items}}
+      <li class="list-group-item"><strong>{{name}}</strong> by {{creator}}</li>
+    {{/each}}
+  </ul>
+
+</template>
+
+
+
+<template name='action'>
+  **ACTION**
+  {{#if isUserLeader}} <!-- returns true presently -->
+
+  <form class='action-form'>
+    SELECT YOUR PARTY
+    <ul>
+      {{#each players}}
+        <li>
+          <input type="checkbox" id={{this}} name={{this}} value={{this}}>
+          <label for={{this}}>{{this}}</label>
+        </li>
+      {{/each}}
+    </ul>
+    <input type='submit' value='Vote'>
+  </form>
+
+
+  {{else}}
+
+  {{/if}}
+
+</template>
+
+<template name='status'>
+**STATUS**
+</template>
+
+<template name='result'>
+**RESULT**
+
+</template>
