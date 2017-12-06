@@ -1,70 +1,59 @@
 <template name="interface">
-{{#if logged_in}}   <!-- checks to see if user is logged in-->
-  {{#if user_in_game}}    <!-- checks to see if user is in game -->
-    IN GAME: <b>{{current_game_code}} </b> <!-- displays current game code-->
-    CURRENT TURN: <b>{{current_turn}} </b>
-    <br><br>
-    Current Players:
-    <ul>
+  {{#if logged_in}}   <!-- checks to see if user is logged in-->
+    {{#if user_in_game}}    <!-- checks to see if user is in game -->
+      {{> input_modal}}
+
+      //needs to only render if game isnt started
+      {{> Template.dynamic template=owner_admin}}
+      <br>
+      IN GAME:      <b>{{current_game_code}} </b> <br>
+      CURRENT TURN: <b>{{current_turn}} </b> <br>
+      CURRENT ROLE: <b>{{current_role}} </b> <br>
+      CURRENT SCORE:  <b>{{current_score}} </b> <br>
+      <br><br>
+
+      Current Players:
+      <table>
+        <tr>
+          <th> voted? </th>
+          <th> username </th>
+          <th> role </th>
+          <th>  </th>
+        </tr>
         {{#each players.players}}
-        <li>{{this.username}}
-            {{#if this.is_owner}} <b> [GAME LEADER]</b> {{/if}}
-        </li>
+        <tr>
+          <td>{{#if pending_votes this.playerID}} voted {{/if}} </td>
+          <td> {{this.username}} </td>
+          <td> {{this.role}} </td>
+          <td> {{#if this.is_owner}} <b> [GAME OWNER]</b> {{/if}} </td>
+        </tr>
         {{/each}}
-    </ul>
+      </table>
 
-    {{#if is_owner}}      <!-- checks to see if user is owner of game -->
+      {{> game_scorecard}}
 
-      shows owner options:
-        <button class="start-game" value={{current_game_code}}>Start Game</button>
-        <button class="end-game" value={{current_game_code}}>End Game</button>
-        <button class="advance-turn" value={{current_game_code}}>Advance Turn</button>
+      {{> Template.dynamic template=chooseTemplate data=getGame}}
 
-    {{else}}               <!--is regular player -->
-    REGULAR PLAYER - waiting for {{players.owner}} to start
+    {{else}}
+      <button class="toggle-new-game">Create New Game</button>
+      <form class='join-game'>
+        <input type='text' name='text' placeholder="game code">
+        <input type='submit'>
+      </form>
     {{/if}}
-
-
   {{else}}
-    <button class="toggle-new-game">Create New Game</button>
-    <form class='join-game'>
-      <input type='text' name='text'>
-      <input type='submit'>
-    </form>
+  LOG IN TO PLAY THE GAME OF LIES FUCKER
   {{/if}}
-{{else}}
-LOG IN TO PLAY THE GAME OF LIES FUCKER
-{{/if}}
-
-  <ul class="nav nav-pills">
-    <li data-template="action" role="presentation" class="active"><a href="#" id="action">action</a></li>
-    <li data-template="result" role="presentation"><a href="#" id="result">result</a></li>
-    <li data-template="status" role="presentation"><a href="#" id="status">status</a></li>
-  </ul>
-
-  {{> Template.dynamic template=chooseTemplate data=getgame}}
 </template>
 
 
 
-
-<template name="content">
-  <h3 class="page-header" style="text-transform: capitalize;">{{this.contentType}}</h3>
-
-  <ul class="list-group">
-    {{#each this.items}}
-      <li class="list-group-item"><strong>{{name}}</strong> by {{creator}}</li>
-    {{/each}}
-  </ul>
-
-</template>
-
-
-
-<template name='action'>
-  **ACTION**
-  {{#if isUserLeader}} <!-- returns true presently -->
-
+<template name='leader'>
+  **ACTION** YOU ARE LEADER
+  {{#if already_voted}}
+  <br>
+    you have already voted
+  {{else}}
   <form class='action-form'>
     SELECT YOUR PARTY
     <ul>
@@ -77,19 +66,105 @@ LOG IN TO PLAY THE GAME OF LIES FUCKER
     </ul>
     <input type='submit' value='Vote'>
   </form>
-
-
-  {{else}}
-
   {{/if}}
-
 </template>
 
-<template name='status'>
-**STATUS**
+
+
+<template name='voter'>
+**YOU ARE A VOTER**
+
+  {{#if get_proposal}}
+
+    <ul>
+    {{#each get_proposal}}
+      <li>{{this}}</li>
+    {{/each}}
+    </ul>
+      {{#if already_voted}}
+        you have already voted
+      {{else}}
+        <button class='vote-on-proposal' value='yes'>Yes</button>
+        <button class='vote-on-proposal' value='no'>No</button>
+      {{/if}}
+  {{else}}
+    --waiting for current leader to submit a party for you to vote on--
+  {{/if}}
 </template>
 
-<template name='result'>
-**RESULT**
 
+
+<template name='game_scorecard'>
+  GAME SCORECARD
+  <br>
+  <table>
+  {{#each get_voting_records}}
+    <tr>
+      <th> Turn Number: {{this.turn_number}} </th>
+    </tr>
+    <tr>
+      <td> <b> Result: {{this.result}} </b> </td>
+    </tr>
+      {{#each this.votes}}
+        <tr>
+          <td>  {{this.username}}:{{this.role}} </td>
+          <td>  {{this.vote}} {{this.proposal}}</td>
+        </tr>
+      {{/each}}
+  {{/each}}
+  </table>
+</template>
+
+
+
+<template name='is_owner'>
+  <button class="start-game" value={{current_game_code}}>Start Game</button>
+  <button class="end-game" value={{current_game_code}}>End Game</button>
+  <button class="advance-turn" value={{current_game_code}}>Advance Turn</button>
+</template>
+
+
+<template name='pass_fail_round_vote'>
+  YOU ARE SELECTED TO VOTE IN THE PASS FAIL ROUND
+  <button class='vote-on-pass-fail' value='yes'>Pass</button>
+  {{#if is_evil}}
+  <button class='vote-on-pass-fail' value='no'>Fail</button>
+  {{else}}
+  <button class='vote-on-pass-fail' value='yes'>Pass</button>
+  {{/if}}
+</template>
+
+<template name='pass_fail_round_wait'>
+YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
+</template>
+
+
+
+
+
+<template name='input_modal'>
+  <button type="button" class="btn btn-primary show_modal">
+  Launch input modal
+  </button>
+
+  <!-- Modal -->
+  <div class="modal fade" id="input_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>

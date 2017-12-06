@@ -4,6 +4,26 @@ import { check } from 'meteor/check';
 
 export const Games = new Mongo.Collection('games')
 
+const game_rules_template = {
+  '5' : {'num_evil_players' : 2, '4th_turn' : false,
+    'players_per_turn' : [2, 3, 2, 3, 3]
+    },
+  '6' : {'num_evil_players' : 2, '4th_turn' : false,
+    'players_per_turn' : [2, 3, 4, 3, 4]
+    },
+  '7' : {'num_evil_players' : 2, '4th_turn' : true,
+    'players_per_turn' : [2, 3, 3, 4, 4]
+    },
+  '8' : {'num_evil_players' : 3, '4th_turn' : true,
+    'players_per_turn' : [3, 4, 4, 5, 5]
+    },
+  '9' : {'num_evil_players' : 3, '4th_turn' : true,
+    'players_per_turn' : [3, 4, 4, 5, 5]
+    },
+  '10' : {'num_evil_players' : 4, '4th_turn' : true,
+    'players_per_turn' : [3, 4, 4, 5, 5]
+    },
+}
 
 if (Meteor.isServer) {
   // This code only runs on the server
@@ -27,17 +47,6 @@ Meteor.methods({
     }
     //check if user is in game?
 
-    //redo how player order is handled
-    // players should be an object
-    // turn order should be decided seperately in another field
-
-    //create first turn
-    var firstTurn = {
-      //leader
-
-      //
-    }
-
     //create game
     gamecode = makeid()
     Games.insert({
@@ -52,16 +61,21 @@ Meteor.methods({
       archived: 'false',
       currentTurn : 0,
       turnRecords: [],
-      currentScore : {'good' : 0, 'evil' : 0}
+      currentScore : {'good' : 0, 'evil' : 0},
+      pass_fail_round : false
     })
     //add creator to game as a user
     Meteor.call('interface.joinGame',gamecode, Meteor.userId())
-    //reassign interface
   },
   'interface.joinGame'(gamecode, userID){
+    var game = Games.find({code : gamecode});
+    //check if game is still accepting new players and isnt archived
+    if (game.acceptingnewplayers == false){
+      console.log("this game isn't accepting new players");
+      return;
+    }
     //see if player is any other game
     if (Games.find({players: {$elemMatch: { playerID:userID }}}).count() == 0){
-      //also needs to check if game is still accepting new players and isnt archived
       user = Meteor.users.findOne({_id : userID});
       Games.update(
         {code : gamecode},
@@ -69,7 +83,8 @@ Meteor.methods({
           { players: {
             'playerID' : userID,
             'username' : user.username,
-            'role' : ''
+            'role' : '',
+            'secretRole' : 'good'
         }}})
     }
     else{
@@ -77,35 +92,53 @@ Meteor.methods({
     }
   },
   'interface.beginGame'(gamecode, userID){
-    //stop new players joining
-    //update everything
-    //begin game
-    //could use some validation
     game = Games.findOne({code : gamecode});
     //doesn't start unless there are 5 or more players
     if (game.players.length < 5){
       console.log("there are less than 5 players. Game won't start.");
       return;
     }
-    // assign random roles
+    var randon_num = function(limit){
+      //returns a random number between 0-limit
+      return Math.floor(Math.random() *limit);
+    }
+    // assign random  turn roles
     var players = game.players;
-    var r = Math.floor(Math.random() * players.length);
+    var r = randon_num(game.players.length);
     for (i=0; i<game.players.length; i++){
       var role = 'voter';
       if (i == r){ role = 'leader' }
       players[i].role = role;
     }
+    // randmize player order
+
+    // assign random secret roles
+    var rules = game_rules_template[game.players.length];
+    var evil_players_index = []
+    //selects random player indexes
+    for (i = 0; i <= rules.num_evil_players-1; i++){
+      var r = randon_num(game.players.length);
+      while (evil_players_index.indexOf(r) > -1){
+        r = randon_num(game.players.length);
+      }
+      evil_players_index.push(r);
+    }
+    //assigns evil roles to random players
+    for (i = 0; i < evil_players_index.length; i++){
+      players[evil_players_index[i]].secretRole = 'evil';
+    }
     //update DB
-    Meteor.call('interface.advanceTurn',gamecode, Meteor.userId())
     Games.update(
       {code : gamecode},
       {$set : {
           acceptingnewplayers : false,
           inprogress : true,
-          players : players
+          players : players,
+          turnRules : rules
         }
       }
     );
+    Meteor.call('interface.advanceTurn',gamecode, Meteor.userId())
   },
   'interface.advanceTurn'(gamecode, userID){
     var game = Games.findOne({code : gamecode});
@@ -121,9 +154,7 @@ Meteor.methods({
     var old_leader_index = undefined;
     for (i=0; i<game.players.length; i++){
       if (players[i].role == 'leader'){
-        console.log('yes');
         new_leader_index = (i + 1) % game.players.length;
-        console.log(new_leader_index)
         old_leader_index = i;
       }
     }
@@ -141,8 +172,9 @@ Meteor.methods({
         $push: {
           turnRecords : {
             turn_number : new_turn_number,
-            winner : '',
-            votes : []
+            result : '',
+            votes : [],
+            pass_fail_votes : []
            }
         }
       }
@@ -176,23 +208,92 @@ Meteor.methods({
       );
   },
   'action.submitParty'(array, gamecode){
-    //validate
     Meteor.call('addValueToTurnRecords', gamecode, array);
+ },
+ 'vote_on_pass_fail'(gamecode, value){
+   var game = Games.findOne({code : gamecode});
+   var player = game.players.find(x => x.playerID === Meteor.userId());
+   var current_turn_num = game.currentTurn
+   var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
+   if (current_turn.pass_fail_votes.find(x => x.playerID === Meteor.userId()) !== undefined){
+     //looks to see if vote from player is already in votes, doesn't write to db;
+     console.log('you cannot change your vote.')
+     return;
+   }
+   var player_vote = {
+    'playerID' : player.playerID,
+    'username' : player.username,
+    'vote' : value
+   }
+   Games.update(
+     {code : gamecode, "turnRecords.turn_number" : current_turn_num},
+     {$push: {  "turnRecords.$.pass_fail_votes" : player_vote } }
+   );
+   //redefine current_turn after votes have been added
+   current_turn = Games.findOne({code : gamecode}).turnRecords.find(x => x.turn_number === game.currentTurn);
+   //checks to see if this is the last vote  advances turn
+   var proposal = current_turn.votes.find(x => x.role === 'leader');
+   if (current_turn.pass_fail_votes.length >= proposal.proposal.length){
+     //calculate if the vote passes
+     var votes_yes = 0;
+     var votes_no = 0;
+     for (i = 0; i < proposal.proposal.length; i++){
+       if (proposal.proposal[i] == 'yes'){
+         votes_yes++;
+       }
+       else if (proposal.proposal[i] == 'yes'){
+         votes_no++;
+       }
+     }
+     var result = '';
+     if (votes_no == 0){
+       result = 'Good wins a point! The party succeeds!'
+       Games.update(
+         {code : gamecode},
+         {$inc: { "currentScore.good" : 1 } }
+       );
+     }
+     else{
+       result = votes_no + ' members of the party caused the round to fail. Evil wins a point.'
+       Games.update(
+         {code : gamecode},
+         {$inc: {  "currentScore.evil" : 1 } }
+       );
+     }
+     Games.update(
+       {code : gamecode, "turnRecords.turn_number" : current_turn_num},
+       {$set: {  "turnRecords.$.result" : result } }
+     );
+     Games.update(
+       {code : gamecode},
+       {$set: {  "pass_fail_round" : false } }
+     );
+     //check for end game conditions
+     var game = Games.findOne({code : gamecode});
+
+     if (game.currentScore.evil >= 3){
+       //game ends, evil wins
+       console.log('evil wins.');
+       //update db to archive game with result
+       //"Play again? plus timer"
+     }
+     else if (game.currentScore.good >= 3){
+       //game ends, good wins
+       console.log('good wins.');
+     }
+     Meteor.call('interface.advanceTurn',gamecode, Meteor.userId());
+   }
  },
  'addValueToTurnRecords'(gamecode, value){
   var game = Games.findOne({code : gamecode});
   var player = game.players.find(x => x.playerID === Meteor.userId());
-  var current_turn_num = game.currentTurn
-  //    var current_turn = game.turnRecords.find(x => x.turn_number == game.currentTurn);
-  //    var current_turn.votes[player.username] = {
+  var current_turn_num = game.currentTurn;
   var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
-  //console.log(current_turn.votes.find(x => x.playerID === Meteor.userId()));
   if (current_turn.votes.find(x => x.playerID === Meteor.userId()) !== undefined){
     //looks to see if vote from player is already in votes, doesn't write to db;
     console.log('you cannot change your vote.')
     return;
   }
-  //console.log((current_turn.votes.find(x => x.playerID === Meteor.userId()))
   var player_vote = {
    'role' : player.role,
    'playerID' : player.playerID,
@@ -208,6 +309,49 @@ Meteor.methods({
     {code : gamecode, "turnRecords.turn_number" : current_turn_num},
     {$push: {  "turnRecords.$.votes" : player_vote } }
   );
+  //redefine current_turn after votes have been added
+  current_turn = Games.findOne({code : gamecode}).turnRecords.find(x => x.turn_number === game.currentTurn);
+  //checks to see if this is the last vote => advances turn
+  if (current_turn.votes.length >= game.players.length){
+    //calculates current score
+    var votes_yes = 0;
+    var votes_no = 0;
+    //could use a switch here instead
+    for (i = 0; i < current_turn.votes.length; i++){
+      if (current_turn.votes[i].vote == 'yes'){
+        votes_yes++;
+      }
+      else if (current_turn.votes[i].vote == 'no'){
+        votes_no++;
+      }
+      else{
+        //console.log('neither yes nor no was found in votes?');
+        //do nothing
+      }
+    }
+    if (votes_yes > votes_no){
+      //yes wins, vote passes
+      //moves into submit pass/fail cards phase
+      Games.update(
+        {code : gamecode},
+        {$set: {  "pass_fail_round" : true } }
+      );
+    }
+    else if (votes_no >= votes_yes){
+      //no wins, vote doesn't pass
+      //stays in voting phase, moves to next round
+      Games.update(
+        {code : gamecode, "turnRecords.turn_number" : current_turn_num},
+        {$set: {  "turnRecords.$.result" : 'no consensus' } }
+      );
+      //advance turn
+      Meteor.call('interface.advanceTurn',gamecode, Meteor.userId());
+    }
+    else{
+      console.log("you shouldn't see this error, this means that something weird happened with the votes.")
+    }
+  }
  }
+
 
 });
