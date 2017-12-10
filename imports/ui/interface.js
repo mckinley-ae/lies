@@ -1,7 +1,22 @@
 import { Template } from 'meteor/templating';
 import { Session } from 'meteor/session'
-import { Games } from '../api/gamedata.js';
+import { Games, game_rules_template} from '../api/gamedata.js';
+import { check_user_in_game, get_current_game, already_voted, get_player_list, checkbox_limit} from './general_functions.js'
 import './interface.html';
+
+
+if (Meteor.isClient) {
+
+  Meteor.startup(function() {
+
+  });
+
+  Template.body.onCreated(function() {
+
+  });
+
+}
+
 
 Template.interface.helpers({
   logged_in(){
@@ -15,10 +30,6 @@ Template.interface.helpers({
     //if user is owner among any games, return true, else false
     return (Games.findOne({owner: Meteor.userId()}) != null) ? true : false;
   },
-  current_role: function(){
-    var player = get_current_game().players.find(x => x.playerID === Meteor.userId());
-    return player.role;
-  },
   user_in_game(){
     //if user not logged in, return false
     if (Meteor.userId() == null){
@@ -27,31 +38,23 @@ Template.interface.helpers({
     //if user is among any games, return true, else false
     return (Games.findOne({players: {$elemMatch: { 'playerID': Meteor.userId()}}}) != null) ? true : false;
   },
-  current_game_code(){
-    return get_current_game().code;
-  },
-  current_score(){
-    var game = get_current_game();
-    return ('Good: ' + game.currentScore.good + ' | Evil: ' + game.currentScore.evil);
-
-  },
   players(){
     //checks if user is in game, if so, finds game, parses array into array of usernames
     return get_player_list({leader_highlight : true});
   },
-  current_turn(){
-    return get_current_game().currentTurn
-  },
-  tab: function() {
-    return Template.instance().currentView.get();
-  },
+// 12.7
+//  tab: function() {
+//    return Template.instance().currentView.get();
+//  },
   chooseTemplate : function() {
     var game = get_current_game()
+    if (game == null){
+      return
+    }
     //chooses what template everyone see
-    if (game.pass_fail_round == true){
+    else if (game.pass_fail_round == true){
       var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
       var proposal = current_turn.votes.find(x => x.role === 'leader');
-      console.log(proposal)
       var user = Meteor.users.findOne({_id : Meteor.userId()});
       if (proposal.proposal.includes(user.username)){
         return 'pass_fail_round_vote';
@@ -59,27 +62,14 @@ Template.interface.helpers({
       else {
         return 'pass_fail_round_wait';
       }
-      //currently in pass_fail round and shouldn't display anything to people not voting
-      // if player is in the party submitted, show them the voting information based on their secret role
     }
     else {
       var player = game.players.find(x => x.playerID === Meteor.userId());
       return player.role;
     }
   },
-  owner_admin(){
-    if (Meteor.userId() == null){
-      return false;
-    }
-    //if user is owner among any games, return 'owner_admin', else false
-    return (Games.findOne({owner: Meteor.userId()}) != null) ? 'is_owner' : 'not_owner';
-  },
   getVotes : function() {
     return game.turnRecords;
-  },
-  pending_votes(playerID){
-    //returns true if player has voted this round
-    return (already_voted(playerID));
   }
 });
 
@@ -93,20 +83,11 @@ Template.interface.events({
      const text = target.text.value;
      Meteor.call('interface.joinGame', text, Meteor.userId());
   },
-  'click .start-game'(event, target){
-    var gamecode = event.target.value;
-    Meteor.call('interface.beginGame', gamecode, Meteor.userId());
-  },
-  'click .advance-turn'(event, target){
-    var gamecode = event.target.value;
-    Meteor.call('interface.advanceTurn', gamecode, Meteor.userId());
-  },
   'click .vote-on-proposal'(event, target){
     var vote = event.target.value;
     var gamecode = get_current_game().code;
     Meteor.call('addValueToTurnRecords', gamecode, vote);
   }
-
 });
 
 Template.leader.helpers({
@@ -114,7 +95,9 @@ Template.leader.helpers({
     return get_player_list();
   },
   already_voted(){
-    return already_voted();
+    if (check_user_in_game(Meteor.userId())){
+      return already_voted();
+    }
   }
 });
 
@@ -126,7 +109,17 @@ Template.leader.events({
     var selected = template.findAll( "input[type=checkbox]:checked");
     var array = selected.map(function(item){ return item.value})
     Meteor.call('addValueToTurnRecords', gamecode, array);
+  },
+  'click .party-checkbox'(event, target){
+    var parent = $(event.currentTarget).parent().parent();
+    var num_checked = $(parent.find('input[class="party-checkbox"]:checked').length)[0];
+    var game = get_current_game()
+    var num_players_allowed = game.turnRules.players_per_turn[game.currentTurn]
+    if (num_checked >= num_players_allowed){
+      $('#'+event.target.id).prop('checked', false);
+    }
   }
+
 });
 
 Template.voter.helpers({
@@ -146,20 +139,64 @@ Template.voter.helpers({
   }
 });
 
+Template.player_hud.helpers({
+  current_game_code(){
+    return get_current_game().code;
+  },
+  current_turn(){
+    return get_current_game().currentTurn
+  },
+  current_role: function(){
+    var player = get_current_game().players.find(x => x.playerID === Meteor.userId());
+    return player.role;
+  },
+  current_players(){
+    //checks if user is in game, if so, finds game, parses array into array of usernames
+    return get_player_list({leader_highlight : true}).players;
+  },
+  pending_votes(playerID){
+    //returns true if player has voted this round
+    return (already_voted(playerID));
+  }
+});
+
+Template.owner_toolbar.helpers({
+  owner_admin(){
+    if (Meteor.userId() == null){
+      return false;
+    }
+    //if user is owner among any games, return 'owner_admin', else false
+    return (Games.findOne({owner: Meteor.userId()}) != null) ? 'is_owner' : 'not_owner';
+  },
+  current_game_code(){
+    return get_current_game().code;
+  },
+  game_not_started(){
+    var game = get_current_game();
+    return (game.acceptingnewplayers == true) ? true : false;
+  }
+})
+
+Template.owner_toolbar.events({
+  'click .start-game'(event, target){
+    var gamecode = event.target.value;
+    Meteor.call('interface.beginGame', gamecode, Meteor.userId());
+  },
+  'click .advance-turn'(event, target){
+    var gamecode = event.target.value;
+    Meteor.call('interface.advanceTurn', gamecode, Meteor.userId());
+  },
+})
+
 Template.game_scorecard.helpers({
   get_voting_records(){
     var game = get_current_game();
-    return game.turnRecords;
+    return game.turnRecords.find(x => x.turn_number == game.currentTurn);
     //var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
     //return current_turn.votes;
   }
 })
 
-Template.is_owner.helpers({
-  current_game_code(){
-    return get_current_game().code;
-  }
-})
 
 Template.pass_fail_round_vote.helpers({
   is_evil(){
@@ -180,81 +217,46 @@ Template.pass_fail_round_vote.events({
 })
 
 
-Template.input_modal.events({
+Template.hidden_info_modal.events({
   'click .show_modal'(event) {
     event.preventDefault();
-    console.log('test');
-    $('#input_modal').modal('show');
+    $('#hidden_info_modal').modal('show');
   }
 })
 
-
-
-get_player_list = function(options){
-  var options = options || {};
-  var leader_highlight = options.leader_highlight || false;
-  // options is object literal
-  // defaults to false, if included
-  // options.leader_highlight == true
-  //returns an object {owner : 'owner', players : [players]
-  game = Games.findOne({players: {$elemMatch: { 'playerID': Meteor.userId()}}})
-  players = []
-  if (game == null) {
-    return;
+Template.hidden_info_modal.helpers({
+  hidden_info(){
+    var to_return = {};
+    var game = get_current_game();
+    var player = game.players.find(x => x.playerID === Meteor.userId());
+    to_return['player_role'] = player.secretRole;
+    if (player.secretRole == 'evil' || 'merlin'){
+      to_return['evil_players'] = game.players.filter(x => x.secretRole === 'evil');
+    }
+    return to_return;
   }
-  else if (leader_highlight == true){
-    owner = ''
-    //iterates through player list, if a player is also owner, they are added to owner variable
-    for (i=0; i<game.players.length; i++) {
-      if (game.players[i].playerID == game.owner) {
-        players.push({
-          'username' : game.players[i].username,
-          'playerID' : game.players[i].playerID,
-          'is_owner' : true,
-          'role' : game.players[i].role});
+  //send note???
+})
+
+Template.game_score.helpers({
+  current_score(){
+    var game_score = get_current_game().currentScore.display;
+    var display = [];
+    for (i = 0; i <= 5; i++){
+      if (i <= game_score.length){
+        switch (game_score[i]){
+          case 'good':
+            display.push('green');
+            break;
+          case 'evil':
+            display.push('red');
+            break;
+        }
       }
-      else {
-        players.push({
-          'username' : game.players[i].username,
-          'playerID' : game.players[i].playerID,
-          'is_owner' : false,
-          'role' : game.players[i].role});
+      else{
+          display.push('grey')
       }
-
     }
-    return {
-      'players' : players,
-      'owner' : owner
-    }
+    return display;
   }
-  else{
-    for (i=0; i<game.players.length; i++) {
-      players.push(game.players[i].username)
-    }
-    return players
-  }
-}
-
-already_voted = function(player){
-  //if no value in the call, assigns to self
-  var playerID = player || Meteor.userId();
-  var game = get_current_game();
-  var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
-  if (current_turn.votes.find(x => x.playerID === playerID) !== undefined){
-    //needs to catch error here
-    return true;
-  }
-  else{
-    return false;
-  }
-}
-
-get_current_game = function(){
-  game = Games.findOne({players: {$elemMatch: { 'playerID' : Meteor.userId()}}});
-  if (game == null){
-    return;
-  }
-  else{
-    return game;
-  }
-}
+})

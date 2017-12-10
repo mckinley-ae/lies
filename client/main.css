@@ -1,1 +1,61 @@
-/* CSS declarations go here */
+body {
+    background-color: black;
+    color: white;
+}
+.main-panel{
+  max-width: 960px;
+  margin:auto;
+  font-size: 16px;
+}
+ul{
+  list-style-type: none;
+}
+.action-panel{
+  border: 3px solid #66FCF1;
+  min-height: 550px;
+}
+.game-info-panel{
+    border: 3px solid #66FCF1;
+    min-height: 550px;
+}
+.circle {
+	width: 80px;
+	height: 80px;
+	-moz-border-radius: 50px;
+	-webkit-border-radius: 50px;
+	border-radius: 50px;
+  float:left;
+}
+.red{
+  background: red;
+}
+.green{
+  background: green;
+}
+.grey{
+  background: grey;
+}
+.game_score_display{
+  display: inline-block;
+  border: 3px solid #73AD21;
+  min-width: 406px;
+  min-height: 86px;
+}
+.login-blurb, .create-or-join{
+  text-align: center;
+  padding-top: 50px;
+}
+.create-game-interface, .join-game-interface{
+  width: 330px;
+  float: none;
+  height: 100px;
+  font-size: 32px;
+  text-align: center;
+}
+.party-checkbox {
+  width: 20px;
+  height: 20px;
+}
+.modal-content{
+  color: black;
+}

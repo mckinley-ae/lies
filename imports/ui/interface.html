@@ -1,48 +1,53 @@
 <template name="interface">
-  {{#if logged_in}}   <!-- checks to see if user is logged in-->
-    {{#if user_in_game}}    <!-- checks to see if user is in game -->
-      {{> input_modal}}
-
-      //needs to only render if game isnt started
-      {{> Template.dynamic template=owner_admin}}
-      <br>
-      IN GAME:      <b>{{current_game_code}} </b> <br>
-      CURRENT TURN: <b>{{current_turn}} </b> <br>
-      CURRENT ROLE: <b>{{current_role}} </b> <br>
-      CURRENT SCORE:  <b>{{current_score}} </b> <br>
-      <br><br>
-
-      Current Players:
-      <table>
-        <tr>
-          <th> voted? </th>
-          <th> username </th>
-          <th> role </th>
-          <th>  </th>
-        </tr>
-        {{#each players.players}}
-        <tr>
-          <td>{{#if pending_votes this.playerID}} voted {{/if}} </td>
-          <td> {{this.username}} </td>
-          <td> {{this.role}} </td>
-          <td> {{#if this.is_owner}} <b> [GAME OWNER]</b> {{/if}} </td>
-        </tr>
-        {{/each}}
-      </table>
-
-      {{> game_scorecard}}
-
-      {{> Template.dynamic template=chooseTemplate data=getGame}}
-
+  <div class="container">
+    <div class="row">
+      <div class="col-2">
+        <h1>Lies</h1>
+        {{> loginButtons}}
+      </div>
+      {{#if logged_in}}
+        {{#if user_in_game}}
+          <div class='col-md-auto'>
+            {{> game_score}}
+          </div>
+          <div class="col-2">
+            {{> hidden_info_modal}}
+            {{> owner_toolbar}}
+          </div>
+          {{/if}}
+        {{/if}}
+    </div>
+  </div>
+  {{#if logged_in}}
+    {{#if user_in_game}}
+      <div class="container">
+        <div class="row">
+          <div class="col-sm">
+            <div class='action-panel'>
+              {{> Template.dynamic template=chooseTemplate data=getGame}}
+            </div>
+          </div>
+          <div class="col-sm">
+            <div class="game-info-panel">
+              {{> player_hud}}
+              {{> game_scorecard}}
+            </div>
+          </div>
+        </div>
+      </div>
     {{else}}
-      <button class="toggle-new-game">Create New Game</button>
-      <form class='join-game'>
-        <input type='text' name='text' placeholder="game code">
-        <input type='submit'>
-      </form>
+      <div class="container justify-content-center">
+            {{> create_or_join}}
+      </div>
     {{/if}}
   {{else}}
-  LOG IN TO PLAY THE GAME OF LIES FUCKER
+    <div class="container">
+      <div class="row">
+        <div class="col-12 login-blurb" >
+          LOG IN TO PLAY THE GAME OF LIES FUCKER
+        </div>
+      </div>
+    </div>
   {{/if}}
 </template>
 
@@ -59,7 +64,7 @@
     <ul>
       {{#each players}}
         <li>
-          <input type="checkbox" id={{this}} name={{this}} value={{this}}>
+          <input class='party-checkbox' type="checkbox" id=party-checkbox{{this}} name={{this}} value={{this}}>
           <label for={{this}}>{{this}}</label>
         </li>
       {{/each}}
@@ -73,9 +78,7 @@
 
 <template name='voter'>
 **YOU ARE A VOTER**
-
   {{#if get_proposal}}
-
     <ul>
     {{#each get_proposal}}
       <li>{{this}}</li>
@@ -84,8 +87,8 @@
       {{#if already_voted}}
         you have already voted
       {{else}}
-        <button class='vote-on-proposal' value='yes'>Yes</button>
-        <button class='vote-on-proposal' value='no'>No</button>
+        <button class='btn btn-primary vote-on-proposal' value='yes'>Yes</button>
+        <button class='btn btn-primary vote-on-proposal' value='no'>No</button>
       {{/if}}
   {{else}}
     --waiting for current leader to submit a party for you to vote on--
@@ -98,39 +101,47 @@
   GAME SCORECARD
   <br>
   <table>
-  {{#each get_voting_records}}
     <tr>
-      <th> Turn Number: {{this.turn_number}} </th>
+      <td> <b> Result: {{get_voting_records.result}} </b> </td>
     </tr>
-    <tr>
-      <td> <b> Result: {{this.result}} </b> </td>
-    </tr>
-      {{#each this.votes}}
+      {{#each get_voting_records.votes}}
         <tr>
           <td>  {{this.username}}:{{this.role}} </td>
           <td>  {{this.vote}} {{this.proposal}}</td>
         </tr>
       {{/each}}
-  {{/each}}
   </table>
 </template>
 
+<template name='game_score'>
+  <div class="game_score_display">
+    {{#each current_score}}
+      <div class="circle {{this}}"></div>
+    {{/each}}
+  </div>
+</template>
 
-
-<template name='is_owner'>
-  <button class="start-game" value={{current_game_code}}>Start Game</button>
-  <button class="end-game" value={{current_game_code}}>End Game</button>
-  <button class="advance-turn" value={{current_game_code}}>Advance Turn</button>
+<template name='owner_toolbar'>
+  {{#if owner_admin}}
+  <div id='owner_toolbar'>
+    {{#if game_not_started}}
+    <button class="btn btn-outline-info start-game" value={{current_game_code}}>Start Game</button>
+    {{/if}}
+    <button class="btn btn-outline-info end-game" value={{current_game_code}}>End Game</button>
+  <!--  <button class="btn btn-outline-info advance-turn" value={{current_game_code}}>Advance Turn</button> !-->
+  </div>
+  {{/if}}
 </template>
 
 
 <template name='pass_fail_round_vote'>
   YOU ARE SELECTED TO VOTE IN THE PASS FAIL ROUND
-  <button class='vote-on-pass-fail' value='yes'>Pass</button>
+  <br>
+  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Pass</button>
   {{#if is_evil}}
-  <button class='vote-on-pass-fail' value='no'>Fail</button>
+  <button class='"btn btn-outline-info vote-on-pass-fail' value='no'>Fail</button>
   {{else}}
-  <button class='vote-on-pass-fail' value='yes'>Pass</button>
+  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Pass</button>
   {{/if}}
 </template>
 
@@ -138,33 +149,73 @@
 YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 </template>
 
+<template name='player_hud'>
+  IN GAME:      <b>{{current_game_code}} </b> <br>
+<!--  CURRENT TURN: <b>{{current_turn}} </b> <br> -->
+  CURRENT ROLE: <b>{{current_role}} </b> <br>
+  <br><br>
+  Current Players:
+  <table>
+    <tr>
+      <th> voted? </th>
+      <th> username </th>
+      <th> role </th>
+      <th>  </th>
+    </tr>
+    {{#each current_players}}
+    <tr>
+      <td>{{#if pending_votes this.playerID}} voted {{/if}} </td>
+      <td> {{this.username}} </td>
+      <td> {{this.role}} </td>
+      <td> {{#if this.is_owner}} <b> [GAME OWNER]</b> {{/if}} </td>
+    </tr>
+    {{/each}}
+  </table>
+</template>
 
 
 
+<template name='hidden_info_modal'>
+  <button class="btn btn-outline-info show_modal">Show Hidden information</button>
 
-<template name='input_modal'>
-  <button type="button" class="btn btn-primary show_modal">
-  Launch input modal
-  </button>
 
-  <!-- Modal -->
-  <div class="modal fade" id="input_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal fade" id="hidden_info_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+          <h5 class="modal-title" id="exampleModalLabel">{{title}}</h5>
           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
         <div class="modal-body">
-
+            Your role: {{hidden_info.player_role}}
+            <br>
+            evil players:
+              <ul>
+                {{#each hidden_info.evil_players}}
+                  <li>{{this.username}} </li>
+                {{/each}}
+              </ul>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary">Save changes</button>
         </div>
       </div>
+    </div>
+  </div>
+</template>
+
+
+<template name='create_or_join'>
+  <div class="container h-100">
+    <div class="row h-100 justify-content-center align-items-center login-blurb">
+      <button type="button" class="btn btn-primary toggle-new-game create-game-interface">Create New Game</button>
+    </div>
+    <div class="row h-100 justify-content-center align-items-center login-blurb">
+      <form class='justify-content-center join-game align-items-centers'>
+        <input class='form-control join-game-interface' type='text' name='text' placeholder="game code">
+        <input class='join-game-interface btn btn-primary' type='submit' value='join game'>
+      </form>
     </div>
   </div>
 </template>

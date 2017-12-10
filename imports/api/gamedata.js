@@ -4,7 +4,7 @@ import { check } from 'meteor/check';
 
 export const Games = new Mongo.Collection('games')
 
-const game_rules_template = {
+export const game_rules_template = {
   '5' : {'num_evil_players' : 2, '4th_turn' : false,
     'players_per_turn' : [2, 3, 2, 3, 3]
     },
@@ -61,7 +61,7 @@ Meteor.methods({
       archived: 'false',
       currentTurn : 0,
       turnRecords: [],
-      currentScore : {'good' : 0, 'evil' : 0},
+      currentScore : {'good' : 0, 'evil' : 0, display : []},
       pass_fail_round : false
     })
     //add creator to game as a user
@@ -127,6 +127,12 @@ Meteor.methods({
     for (i = 0; i < evil_players_index.length; i++){
       players[evil_players_index[i]].secretRole = 'evil';
     }
+    //assigns merlin to a player
+    var r = randon_num(game.players.length);
+    while (evil_players_index.find(x => x == r)){
+      r = randon_num(game.players.length);
+    }
+    players[i].secretRole = 'merlin';
     //update DB
     Games.update(
       {code : gamecode},
@@ -237,27 +243,34 @@ Meteor.methods({
      //calculate if the vote passes
      var votes_yes = 0;
      var votes_no = 0;
-     for (i = 0; i < proposal.proposal.length; i++){
-       if (proposal.proposal[i] == 'yes'){
+     for (i = 0; i < current_turn.pass_fail_votes.length; i++){
+       if (current_turn.pass_fail_votes[i].vote == 'yes'){
          votes_yes++;
        }
-       else if (proposal.proposal[i] == 'yes'){
+       else if (current_turn.pass_fail_votes[i].vote == 'no'){
          votes_no++;
        }
      }
      var result = '';
+     console.log('votes yes' + votes_yes + ' votes no: ' + votes_no);
      if (votes_no == 0){
        result = 'Good wins a point! The party succeeds!'
        Games.update(
          {code : gamecode},
-         {$inc: { "currentScore.good" : 1 } }
+         {
+           $inc: { "currentScore.good" : 1 },
+           $push: { "currentScore.display" : 'good'}
+         }
        );
      }
      else{
        result = votes_no + ' members of the party caused the round to fail. Evil wins a point.'
        Games.update(
          {code : gamecode},
-         {$inc: {  "currentScore.evil" : 1 } }
+         {
+            $inc: {  "currentScore.evil" : 1 },
+            $push: { "currentScore.display" : 'evil'}
+          }
        );
      }
      Games.update(
