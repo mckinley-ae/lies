@@ -12,7 +12,7 @@ if (Meteor.isClient) {
   });
 
   Template.body.onCreated(function() {
-
+      $(".fade-overlay").fadeIn();
   });
 
 }
@@ -156,7 +156,27 @@ Template.player_hud.helpers({
   },
   pending_votes(playerID){
     //returns true if player has voted this round
-    return (already_voted(playerID));
+    var game = get_current_game();
+    var turn_records = game.turnRecords.find(x => x.turn_number == game.currentTurn);
+    if (already_voted(playerID)){
+       var vote = turn_records.votes.find(x => x.playerID == playerID);
+       if (vote.proposal){
+         return vote.proposal;
+       }
+       else if(vote.vote){
+         return vote.vote;
+       }
+    }
+    else{
+      return false;
+    }
+
+  },
+  get_voting_records(){
+    var game = get_current_game();
+    return game.turnRecords.find(x => x.turn_number == game.currentTurn);
+    //var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
+    //return current_turn.votes;
   }
 });
 
@@ -186,16 +206,12 @@ Template.owner_toolbar.events({
     var gamecode = event.target.value;
     Meteor.call('interface.advanceTurn', gamecode, Meteor.userId());
   },
-})
+  'click .end-game'(event, target){
 
-Template.game_scorecard.helpers({
-  get_voting_records(){
-    var game = get_current_game();
-    return game.turnRecords.find(x => x.turn_number == game.currentTurn);
-    //var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
-    //return current_turn.votes;
+    console.log('sads');
   }
 })
+
 
 
 Template.pass_fail_round_vote.helpers({
@@ -230,7 +246,8 @@ Template.hidden_info_modal.helpers({
     var game = get_current_game();
     var player = game.players.find(x => x.playerID === Meteor.userId());
     to_return['player_role'] = player.secretRole;
-    if (player.secretRole == 'evil' || 'merlin'){
+    if (player.secretRole == 'evil' ||
+        player.secretRole == 'merlin'){
       to_return['evil_players'] = game.players.filter(x => x.secretRole === 'evil');
     }
     return to_return;

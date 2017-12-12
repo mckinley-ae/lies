@@ -2,7 +2,7 @@
   <div class="container">
     <div class="row">
       <div class="col-2">
-        <h1>Lies</h1>
+        <h1>Beguile</h1>
         {{> loginButtons}}
       </div>
       {{#if logged_in}}
@@ -30,7 +30,6 @@
           <div class="col-sm">
             <div class="game-info-panel">
               {{> player_hud}}
-              {{> game_scorecard}}
             </div>
           </div>
         </div>
@@ -44,7 +43,7 @@
     <div class="container">
       <div class="row">
         <div class="col-12 login-blurb" >
-          LOG IN TO PLAY THE GAME OF LIES FUCKER
+          PLEASE LOG IN TO PLAY
         </div>
       </div>
     </div>
@@ -65,7 +64,8 @@
       {{#each players}}
         <li>
           <input class='party-checkbox' type="checkbox" id=party-checkbox{{this}} name={{this}} value={{this}}>
-          <label for={{this}}>{{this}}</label>
+          <label for={{this}}><button type="button" class="btn btn-secondary">{{this}}</button></label>
+
         </li>
       {{/each}}
     </ul>
@@ -95,23 +95,6 @@
   {{/if}}
 </template>
 
-
-
-<template name='game_scorecard'>
-  GAME SCORECARD
-  <br>
-  <table>
-    <tr>
-      <td> <b> Result: {{get_voting_records.result}} </b> </td>
-    </tr>
-      {{#each get_voting_records.votes}}
-        <tr>
-          <td>  {{this.username}}:{{this.role}} </td>
-          <td>  {{this.vote}} {{this.proposal}}</td>
-        </tr>
-      {{/each}}
-  </table>
-</template>
 
 <template name='game_score'>
   <div class="game_score_display">
@@ -151,26 +134,19 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 
 <template name='player_hud'>
   IN GAME:      <b>{{current_game_code}} </b> <br>
-<!--  CURRENT TURN: <b>{{current_turn}} </b> <br> -->
   CURRENT ROLE: <b>{{current_role}} </b> <br>
-  <br><br>
-  Current Players:
+  waiting for?
+  game owner
   <table>
-    <tr>
-      <th> voted? </th>
-      <th> username </th>
-      <th> role </th>
-      <th>  </th>
-    </tr>
     {{#each current_players}}
-    <tr>
-      <td>{{#if pending_votes this.playerID}} voted {{/if}} </td>
+    <tr class='hud-{{this.role}}'>
       <td> {{this.username}} </td>
-      <td> {{this.role}} </td>
-      <td> {{#if this.is_owner}} <b> [GAME OWNER]</b> {{/if}} </td>
+      <td>{{#with pending_votes this.playerID}} {{this}} {{/with}} </td>
+      <td> {{#if this.is_owner}} <b> owner</b> {{/if}} </td>
     </tr>
     {{/each}}
   </table>
+
 </template>
 
 
