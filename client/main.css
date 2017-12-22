@@ -8,6 +8,7 @@
 .float-right{
   position: absolute;
   right: 0;
+  top: 0;
   box-sizing: border-box;
 }
 ul{
@@ -19,8 +20,8 @@ ul{
 .action-panel{
   padding-top: 10%;
 }
-.game-info-panel{
-
+.info-panel{
+  padding-top: 10%;
 }
 .circle {
   min-width:70%;

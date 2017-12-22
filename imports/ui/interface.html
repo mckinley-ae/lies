@@ -14,13 +14,16 @@
             <div class="container action-panel">
                 {{> Template.dynamic template=chooseTemplate data=getGame}}
             </div>
-            <br><br>
-            {{> player_hud}}
+            <div class="container info-panel">
+              {{> player_hud}}
+            </div>
           {{else}}
             {{> create_or_join}}
           {{/if}}
         {{else}}
+        <div class="mx-auto">
           PLEASE LOG IN TO PLAY
+        </div>
         {{/if}}
 
 
@@ -86,8 +89,31 @@
     {{#if game_not_started}}
     <button class="btn btn-outline-info start-game btn-block" value={{current_game_code}}>Start Game</button>
     {{/if}}
-    <button class="btn btn-outline-info end-game btn-block" value={{current_game_code}}>End Game</button>
-  <!--  <button class="btn btn-outline-info advance-turn" value={{current_game_code}}>Advance Turn</button> !-->
+    <button class="btn btn-outline-info show_modal">End Game</button>
+
+
+    <div class="modal fade" id="end_game_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">{{title}}</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to end the game?
+            <button class="btn btn-outline-info end-game btn-block" value={{current_game_code}}>End Game</button>
+
+            <button class="btn btn-outline-info btn-block" type="button" data-dismiss="modal" aria-label="No">No</button>
+          </div>
+          <div class="modal-footer">
+          </div>
+        </div>
+      </div>
+    </div>
+
+
   </div>
   {{/if}}
 </template>
@@ -111,8 +137,6 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 <template name='player_hud'>
   IN GAME:      <b>{{current_game_code}} </b> <br>
   CURRENT ROLE: <b>{{current_role}} </b> <br>
-  waiting for?
-  game owner
   <br>
   <table>
     {{#each current_players}}
@@ -129,7 +153,7 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 
 
 <template name='hidden_info_modal'>
-  <button class="btn btn-outline-info show_modal">Hidden infor</button>
+  <button class="btn btn-outline-info show_modal">Hidden info</button>
 
 
   <div class="modal fade" id="hidden_info_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -162,12 +186,11 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 <template name='create_or_join'>
   <div class="container h-100">
     <div class="row h-100 justify-content-center align-items-center login-blurb">
-      <button type="button" class="btn btn-primary toggle-new-game create-game-interface">Create New Game</button>
-    </div>
-    <div class="row h-100 justify-content-center align-items-center login-blurb">
       <form class='justify-content-center join-game align-items-centers'>
+        <button type="button" class="btn btn-primary toggle-new-game create-game-interface btn-block">Create New Game</button>
+        <br>
         <input class='form-control join-game-interface' type='text' name='text' placeholder="game code">
-        <input class='join-game-interface btn btn-primary' type='submit' value='join game'>
+        <input class='join-game-interface btn btn-primary btn-block' type='submit' value='join game'>
       </form>
     </div>
   </div>

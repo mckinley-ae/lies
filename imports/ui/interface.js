@@ -205,10 +205,15 @@ Template.owner_toolbar.events({
     var gamecode = event.target.value;
     Meteor.call('interface.advanceTurn', gamecode, Meteor.userId());
   },
+  'click .show_modal'(event) {
+    event.preventDefault();
+    $('#end_game_modal').modal('show');
+  },
   'click .end-game'(event, target){
 
     console.log('sads');
   }
+
 })
 
 
