@@ -1,53 +1,29 @@
 <template name="interface">
-  <div class="container">
-    <div class="row">
-      <div class="col-2">
-        <h1>Beguile</h1>
         {{> loginButtons}}
-      </div>
       {{#if logged_in}}
         {{#if user_in_game}}
-          <div class='col-md-auto'>
-            {{> game_score}}
-          </div>
-          <div class="col-2">
-            {{> hidden_info_modal}}
-            {{> owner_toolbar}}
-          </div>
+            <div class='float-right'>
+              {{> hidden_info_modal}}
+              {{> owner_toolbar}}
+              {{> game_score}}
+            </div>
           {{/if}}
         {{/if}}
-    </div>
-  </div>
-  {{#if logged_in}}
-    {{#if user_in_game}}
-      <div class="container">
-        <div class="row">
-          <div class="col-sm">
-            <div class='action-panel'>
-              {{> Template.dynamic template=chooseTemplate data=getGame}}
+        {{#if logged_in}}
+          {{#if user_in_game}}
+            <div class="container action-panel">
+                {{> Template.dynamic template=chooseTemplate data=getGame}}
             </div>
-          </div>
-          <div class="col-sm">
-            <div class="game-info-panel">
-              {{> player_hud}}
-            </div>
-          </div>
-        </div>
-      </div>
-    {{else}}
-      <div class="container justify-content-center">
+            <br><br>
+            {{> player_hud}}
+          {{else}}
             {{> create_or_join}}
-      </div>
-    {{/if}}
-  {{else}}
-    <div class="container">
-      <div class="row">
-        <div class="col-12 login-blurb" >
+          {{/if}}
+        {{else}}
           PLEASE LOG IN TO PLAY
-        </div>
-      </div>
-    </div>
-  {{/if}}
+        {{/if}}
+
+
 </template>
 
 
@@ -106,11 +82,11 @@
 
 <template name='owner_toolbar'>
   {{#if owner_admin}}
-  <div id='owner_toolbar'>
+  <div id='owner_toolbar' class='owner-toolbar'>
     {{#if game_not_started}}
-    <button class="btn btn-outline-info start-game" value={{current_game_code}}>Start Game</button>
+    <button class="btn btn-outline-info start-game btn-block" value={{current_game_code}}>Start Game</button>
     {{/if}}
-    <button class="btn btn-outline-info end-game" value={{current_game_code}}>End Game</button>
+    <button class="btn btn-outline-info end-game btn-block" value={{current_game_code}}>End Game</button>
   <!--  <button class="btn btn-outline-info advance-turn" value={{current_game_code}}>Advance Turn</button> !-->
   </div>
   {{/if}}
@@ -137,6 +113,7 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
   CURRENT ROLE: <b>{{current_role}} </b> <br>
   waiting for?
   game owner
+  <br>
   <table>
     {{#each current_players}}
     <tr class='hud-{{this.role}}'>
@@ -152,7 +129,7 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 
 
 <template name='hidden_info_modal'>
-  <button class="btn btn-outline-info show_modal">Show Hidden information</button>
+  <button class="btn btn-outline-info show_modal">Hidden infor</button>
 
 
   <div class="modal fade" id="hidden_info_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -193,5 +170,32 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
         <input class='join-game-interface btn btn-primary' type='submit' value='join game'>
       </form>
     </div>
+  </div>
+</template>
+
+
+<template name='nav'>
+  <nav class="navbar navbar-fixed-top navbar-inverse bg-primary navbar-toggleable-md">
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="d-flex">
+          <a class="navbar-brand" href="#">Brand</a>
+          <span class="navbar-text"><i class="fa fa-lg fa-tree"></i></span>
+      </div>
+      <div class="navbar-collapse collapse" id="navbarNav">
+          <ul class="navbar-nav flex-row ml-auto justify-content-between">
+              <li class="nav-item"><a href="#" class="nav-link">Home</a></li>
+              <li class="nav-item"><a href="#" class="nav-link">Link</a></li>
+              <li class="nav-item"><a href="#" class="nav-link">Link</a></li>
+              <li class="nav-item"><a href="#" class="nav-link">Link</a></li>
+              <li class="nav-item"><a href="#" class="nav-link">Link</a></li>
+          </ul>
+      </div>
+  </nav>
+  <div class="container-fluid">
+      <div class="row">
+          <div class="col">Shrink the viewport width to toggle &amp; show the mobile menu</div>
+      </div>
   </div>
 </template>

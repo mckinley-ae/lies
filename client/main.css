@@ -1,47 +1,40 @@
-@media (max-width: 480px) {
-    .container {
-      padding:0;
-      margin:0;
-    }
-
-    body {
-      padding:0;
-    }
-
-    .navbar-fixed-top, .navbar-fixed-bottom, .navbar-static-top {
-      margin-left: 0;
-      margin-right: 0;
-      margin-bottom:0;
-    }
-}
-
 .main-body{
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    position: relative;
     background-color: black;
     color: white;
+    max-width: 500px;
+    margin: auto;
 }
-.main-panel{
-  max-width: 960px;
-  margin:auto;
-  font-size: 22px;
+.float-right{
+  position: absolute;
+  right: 0;
+  box-sizing: border-box;
 }
 ul{
   list-style-type: none;
 }
+.main-panel{
+
+}
 .action-panel{
-  min-height: 550px;
+  padding-top: 10%;
 }
 .game-info-panel{
-    min-height: 550px;
+
 }
 .circle {
-	width: 80px;
-	height: 80px;
-	-moz-border-radius: 50px;
-	-webkit-border-radius: 50px;
-	border-radius: 50px;
-  float:left;
+  min-width:70%;
+	height: 40%;
+  min-height: 60px
+	-moz-border-radius: auto;
+	-webkit-border-radius: auto;
+	border-radius: 50%;
+  float:right;
+}
+.circle:after {
+  content: "";
+  display: block;
+  padding-bottom: 100%;
 }
 .red{
   background: red;
@@ -53,18 +46,16 @@ ul{
   background: grey;
 }
 .game_score_display{
-  display: inline-block;
-  min-width: 406px;
-  min-height: 86px;
+
 }
 .login-blurb, .create-or-join{
   text-align: center;
   padding-top: 50px;
 }
 .create-game-interface, .join-game-interface{
-  width: 330px;
+  width: auto;
   float: none;
-  height: 100px;
+  height: auto;
   font-size: 32px;
   text-align: center;
 }
@@ -80,4 +71,7 @@ ul{
 }
 .hud-voter{
   font-style: italic;
+}
+button .owner-toolbar{
+  width: 100%;
 }

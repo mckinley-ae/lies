@@ -185,8 +185,7 @@ Template.owner_toolbar.helpers({
     if (Meteor.userId() == null){
       return false;
     }
-    //if user is owner among any games, return 'owner_admin', else false
-    return (Games.findOne({owner: Meteor.userId()}) != null) ? 'is_owner' : 'not_owner';
+    return Games.findOne({owner: Meteor.userId()}) != null
   },
   current_game_code(){
     return get_current_game().code;
