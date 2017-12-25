@@ -1,5 +1,6 @@
 <template name="interface">
         {{> loginButtons}}
+        {{> alert_modal}}
       {{#if logged_in}}
         {{#if user_in_game}}
             <div class='float-right'>
@@ -103,7 +104,7 @@
           </div>
           <div class="modal-body">
             Are you sure you want to end the game?
-            <button class="btn btn-outline-info end-game btn-block" value={{current_game_code}}>End Game</button>
+            <button class="btn btn-outline-info end-game btn-block" type="button" data-dismiss="modal" value={{current_game_code}}>End Game</button>
 
             <button class="btn btn-outline-info btn-block" type="button" data-dismiss="modal" aria-label="No">No</button>
           </div>
@@ -166,14 +167,18 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
           </button>
         </div>
         <div class="modal-body">
-            Your role: {{hidden_info.player_role}}
-            <br>
-            evil players:
-              <ul>
-                {{#each hidden_info.evil_players}}
-                  <li>{{this.username}} </li>
-                {{/each}}
-              </ul>
+            {{#if hidden_info.waiting_message}}
+              {{hidden_info.waiting_message}}
+            {{else}}
+              Your role: {{hidden_info.player_role}}
+              <br>
+              evil players:
+                <ul>
+                  {{#each hidden_info.evil_players}}
+                    <li>{{this.username}} </li>
+                  {{/each}}
+                </ul>
+            {{/if}}
         </div>
         <div class="modal-footer">
         </div>
@@ -220,5 +225,25 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
       <div class="row">
           <div class="col">Shrink the viewport width to toggle &amp; show the mobile menu</div>
       </div>
+  </div>
+</template>
+
+<template name='alert_modal'>
+  <div class="modal fade" id="alert_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">{{title}}</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          {{alert_modal_body}}
+        </div>
+        <div class="modal-footer">
+        </div>
+      </div>
+    </div>
   </div>
 </template>

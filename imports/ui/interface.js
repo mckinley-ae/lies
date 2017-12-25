@@ -36,7 +36,8 @@ Template.interface.helpers({
       return false;
     }
     //if user is among any games, return true, else false
-    return (Games.findOne({players: {$elemMatch: { 'playerID': Meteor.userId()}}}) != null) ? true : false;
+    //return (Games.findOne({players: {$elemMatch: { 'playerID': Meteor.userId()}}}) != null) ? true : false;
+    return get_current_game();
   },
   players(){
     //checks if user is in game, if so, finds game, parses array into array of usernames
@@ -199,6 +200,12 @@ Template.owner_toolbar.helpers({
 Template.owner_toolbar.events({
   'click .start-game'(event, target){
     var gamecode = event.target.value;
+    var game = Games.findOne({code: gamecode})
+    if (game.players.length <= 5){
+      Session.set('alert_modal_content', "There are less than 5 players. Game won't start.")
+      $('#alert_modal').modal('show');
+
+    }
     Meteor.call('interface.beginGame', gamecode, Meteor.userId());
   },
   'click .advance-turn'(event, target){
@@ -210,8 +217,12 @@ Template.owner_toolbar.events({
     $('#end_game_modal').modal('show');
   },
   'click .end-game'(event, target){
-
-    console.log('sads');
+    var gamecode = event.target.value;
+    //hide backdrop
+    $('#end_game_modal').modal('hide');
+    $('body').removeClass('modal-open');
+    $('.modal-backdrop').remove();
+    Meteor.call('interface.endGame', gamecode, Meteor.userId());
   }
 
 })
@@ -248,11 +259,16 @@ Template.hidden_info_modal.helpers({
   hidden_info(){
     var to_return = {};
     var game = get_current_game();
-    var player = game.players.find(x => x.playerID === Meteor.userId());
-    to_return['player_role'] = player.secretRole;
-    if (player.secretRole == 'evil' ||
-        player.secretRole == 'merlin'){
-      to_return['evil_players'] = game.players.filter(x => x.secretRole === 'evil');
+    if (game.inprogress == 'false'){
+      to_return['waiting_message'] = 'The roles are undecided, we are waiting for the game to start.';
+    }
+    if (game.inprogress == 'true'){
+      var player = game.players.find(x => x.playerID === Meteor.userId());
+      to_return['player_role'] = player.secretRole;
+      if (player.secretRole == 'evil' ||
+          player.secretRole == 'merlin'){
+        to_return['evil_players'] = game.players.filter(x => x.secretRole === 'evil');
+      }
     }
     return to_return;
   }
@@ -279,5 +295,12 @@ Template.game_score.helpers({
       }
     }
     return display;
+  }
+})
+
+
+Template.alert_modal.helpers({
+  alert_modal_body(){
+    return Session.get('alert_modal_content');
   }
 })

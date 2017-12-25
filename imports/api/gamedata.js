@@ -40,8 +40,8 @@ Meteor.methods({
     //TODO - random words replace code
     function makeid() {
       var text = "";
-      var possible = "abcdefghijklmnopqrstuvwxyz0123456789";
-      for (var i = 0; i < 4; i++)
+      var possible = "0123456789";
+      for (var i = 0; i < 6; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
       return text;
     }
@@ -75,7 +75,14 @@ Meteor.methods({
       return;
     }
     //see if player is any other game
-    if (Games.find({players: {$elemMatch: { playerID:userID }}}).count() == 0){
+    var game_count = Games.find({
+          'players': {
+            $elemMatch: { playerID : userID }
+          },
+          'inprogress' : true,
+          'archived' : false
+        }).count();
+    if (game_count == 0){
       user = Meteor.users.findOne({_id : userID});
       Games.update(
         {code : gamecode},
@@ -91,8 +98,21 @@ Meteor.methods({
       console.log('player already exists in game');
     }
   },
+  'interface.endGame'(gamecode, userID){
+    Games.update(
+      {code : gamecode},
+      {$set : {
+          inprogress : false,
+          archived : true,
+          acceptingnewplayers : false
+
+        }
+      }
+    );
+
+  },
   'interface.beginGame'(gamecode, userID){
-    game = Games.findOne({code : gamecode});
+    var game = Games.findOne({code : gamecode});
     //doesn't start unless there are 5 or more players
     if (game.players.length < 5){
       console.log("there are less than 5 players. Game won't start.");
