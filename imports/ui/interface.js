@@ -43,14 +43,19 @@ Template.interface.helpers({
     //checks if user is in game, if so, finds game, parses array into array of usernames
     return get_player_list({leader_highlight : true});
   },
-// 12.7
-//  tab: function() {
-//    return Template.instance().currentView.get();
-//  },
+  game_not_over(){
+    var game = get_current_game();
+    return game.gameOver
+  },
   chooseTemplate : function() {
     var game = get_current_game()
     if (game == null){
-      return
+      return;
+    }
+    else if (game.inprogress == false){
+      //game not started
+      console.log(game.inprogress);
+      return 'waiting_for_players';
     }
     //chooses what template everyone see
     else if (game.pass_fail_round == true){
@@ -99,24 +104,40 @@ Template.leader.helpers({
     if (check_user_in_game(Meteor.userId())){
       return already_voted();
     }
+  },
+  invalid_proposal(){
+    return Session.get('invalid_proposal');
+  },
+  num_players_allowed(){
+    var game = get_current_game();
+    return game.turnRules.players_per_turn[game.currentTurn-1];
   }
 });
 
 Template.leader.events({
-  'submit .action-form'(event, template){
+  'click #submit_party'(event, template){
     // Prevent default browser form submit
     event.preventDefault();
+    var game = get_current_game();
+    var num_players_allowed = game.turnRules.players_per_turn[game.currentTurn-1];
     var gamecode = get_current_game().code
     var selected = template.findAll( "input[type=checkbox]:checked");
     var array = selected.map(function(item){ return item.value})
-    Meteor.call('addValueToTurnRecords', gamecode, array);
+    if (array.length == num_players_allowed) {
+      Meteor.call('addValueToTurnRecords', gamecode, array);
+    }
+    else{
+      Session.set('invalid_proposal', true);
+    }
   },
   'click .party-checkbox'(event, target){
     var parent = $(event.currentTarget).parent().parent();
     var num_checked = $(parent.find('input[class="party-checkbox"]:checked').length)[0];
     var game = get_current_game()
-    var num_players_allowed = game.turnRules.players_per_turn[game.currentTurn]
-    if (num_checked >= num_players_allowed){
+    var num_players_allowed = game.turnRules.players_per_turn[game.currentTurn-1]
+    console.log(game.currentTurn)
+    console.log(num_checked)
+    if (num_checked > num_players_allowed){
       $('#'+event.target.id).prop('checked', false);
     }
   }
@@ -141,22 +162,41 @@ Template.voter.helpers({
 });
 
 Template.player_hud.helpers({
+  game_not_started(){
+    return get_current_game().inprogress;
+  },
   current_game_code(){
     return get_current_game().code;
   },
   current_turn(){
     return get_current_game().currentTurn
   },
-  current_role: function(){
+  turn_instructions(){
     var player = get_current_game().players.find(x => x.playerID === Meteor.userId());
-    return player.role;
+    var leader = get_current_game().players.find(x => x.role === 'leader');
+    //return player.role;
+    //returns instructions based on role
+    switch (player.role){
+      case 'voter':
+        return 'vote on ' + leader.username +"'"+"s proposal";
+      case 'leader':
+        return 'decide which players you want to propose for your group';
+      default:
+        return 'you should never see this.';
+    }
+  },
+  voters(){
+    return get_current_game().players.filter(x => x.role === 'voter');
+  },
+  leader(){
+    return get_current_game().players.find(x => x.role === 'leader');
   },
   current_players(){
     //checks if user is in game, if so, finds game, parses array into array of usernames
     return get_player_list({leader_highlight : true}).players;
   },
   pending_votes(playerID){
-    //returns true if player has voted this round
+    //returns the vote if player has voted this round, else false
     var game = get_current_game();
     var turn_records = game.turnRecords.find(x => x.turn_number == game.currentTurn);
     if (already_voted(playerID)){
@@ -171,7 +211,6 @@ Template.player_hud.helpers({
     else{
       return false;
     }
-
   },
   get_voting_records(){
     var game = get_current_game();
@@ -201,7 +240,7 @@ Template.owner_toolbar.events({
   'click .start-game'(event, target){
     var gamecode = event.target.value;
     var game = Games.findOne({code: gamecode})
-    if (game.players.length <= 5){
+    if (game.players.length < 5){
       Session.set('alert_modal_content', "There are less than 5 players. Game won't start.")
       $('#alert_modal').modal('show');
 
@@ -259,10 +298,11 @@ Template.hidden_info_modal.helpers({
   hidden_info(){
     var to_return = {};
     var game = get_current_game();
-    if (game.inprogress == 'false'){
+    to_return['inprogress'] = game.inprogress;
+    if (game.inprogress == false){
       to_return['waiting_message'] = 'The roles are undecided, we are waiting for the game to start.';
     }
-    if (game.inprogress == 'true'){
+    if (game.inprogress == true){
       var player = game.players.find(x => x.playerID === Meteor.userId());
       to_return['player_role'] = player.secretRole;
       if (player.secretRole == 'evil' ||
@@ -302,5 +342,24 @@ Template.game_score.helpers({
 Template.alert_modal.helpers({
   alert_modal_body(){
     return Session.get('alert_modal_content');
+  }
+})
+
+Template.game_over_screen.helpers({
+  winner(){
+    var game = get_current_game();
+    if (game.gameOver == true){
+      return game.winner;
+    }
+    else{
+      return false;
+    }
+  }
+
+})
+
+Template.waiting_for_players.helpers({
+  player_list(){
+    return get_player_list();
   }
 })

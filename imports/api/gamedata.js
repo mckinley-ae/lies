@@ -57,12 +57,14 @@ Meteor.methods({
       players : [],
       playerOrder : [],
       acceptingnewplayers : true,
-      inprogress: 'false',
-      archived: 'false',
+      inprogress: false,
+      archived: false,
       currentTurn : 0,
       turnRecords: [],
       currentScore : {'good' : 0, 'evil' : 0, display : []},
-      pass_fail_round : false
+      pass_fail_round : false,
+      gameOver : false,
+      winner : undefined
     })
     //add creator to game as a user
     Meteor.call('interface.joinGame',gamecode, Meteor.userId())
@@ -308,14 +310,25 @@ Meteor.methods({
        //game ends, evil wins
        console.log('evil wins.');
        //update db to archive game with result
-       //"Play again? plus timer"
+      Meteor.call('gameOver', game.gamecode, 'evil');
+
      }
      else if (game.currentScore.good >= 3){
        //game ends, good wins
        console.log('good wins.');
+       Meteor.call('gameOver', game.gamecode, 'good');
+
      }
      Meteor.call('interface.advanceTurn',gamecode, Meteor.userId());
    }
+ },
+ 'gameOver'(gamecode, winner){
+   Games.update(
+     {code : gamecode},
+     {$set: {  'gameOver' : true,
+                'winner' : winner }
+            }
+   );
  },
  'addValueToTurnRecords'(gamecode, value){
   var game = Games.findOne({code : gamecode});

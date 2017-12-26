@@ -12,18 +12,24 @@
         {{/if}}
         {{#if logged_in}}
           {{#if user_in_game}}
-            <div class="container action-panel">
-                {{> Template.dynamic template=chooseTemplate data=getGame}}
-            </div>
-            <div class="container info-panel">
-              {{> player_hud}}
-            </div>
+            {{#if game_over}}
+              {{> game_over_screen}}
+            {{else}}
+              <div class='left-side'>
+                <div class="container action-panel">
+                    {{> Template.dynamic template=chooseTemplate data=getGame}}
+                </div>
+                <div class="container info-panel">
+                  {{> player_hud}}
+                </div>
+              </div>
+            {{/if}}
           {{else}}
             {{> create_or_join}}
           {{/if}}
         {{else}}
         <div class="mx-auto">
-          PLEASE LOG IN TO PLAY
+          {{>main_intro_screen}}
         </div>
         {{/if}}
 
@@ -33,23 +39,30 @@
 
 
 <template name='leader'>
-  **ACTION** YOU ARE LEADER
+  You are the leader this turn.
   {{#if already_voted}}
   <br>
     you have already voted
   {{else}}
   <form class='action-form'>
-    SELECT YOUR PARTY
+    Select {{num_players_allowed}} players for your party!
     <ul>
       {{#each players}}
         <li>
           <input class='party-checkbox' type="checkbox" id=party-checkbox{{this}} name={{this}} value={{this}}>
           <label for={{this}}><button type="button" class="btn btn-secondary">{{this}}</button></label>
-
         </li>
       {{/each}}
     </ul>
-    <input type='submit' value='Vote'>
+    {{#if invalid_proposal}}
+      <span class='invalid_proposal'>
+        you need to select {{num_players_allowed}} players.
+      </span>
+      <br>
+      <button id="submit_party" class='btn btn-danger' value='Submit'>Submit</button>
+    {{else}}
+      <button id="submit_party" class='btn btn-primary' value='Submit'>Submit</button>
+    {{/if}}
   </form>
   {{/if}}
 </template>
@@ -123,11 +136,11 @@
 <template name='pass_fail_round_vote'>
   YOU ARE SELECTED TO VOTE IN THE PASS FAIL ROUND
   <br>
-  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Pass</button>
+  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Repair</button>
   {{#if is_evil}}
-  <button class='"btn btn-outline-info vote-on-pass-fail' value='no'>Fail</button>
+  <button class='"btn btn-outline-info vote-on-pass-fail' value='no'>Sabotage</button>
   {{else}}
-  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Pass</button>
+  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Repair</button>
   {{/if}}
 </template>
 
@@ -136,18 +149,38 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 </template>
 
 <template name='player_hud'>
-  IN GAME:      <b>{{current_game_code}} </b> <br>
-  CURRENT ROLE: <b>{{current_role}} </b> <br>
-  <br>
-  <table>
-    {{#each current_players}}
-    <tr class='hud-{{this.role}}'>
-      <td> {{this.username}} </td>
-      <td>{{#with pending_votes this.playerID}} {{this}} {{/with}} </td>
-      <td> {{#if this.is_owner}} <b> owner</b> {{/if}} </td>
-    </tr>
+  {{#if game_not_started}}
+    What you need to do right now: {{turn_instructions}} <br>
+
+    <!--leader of the round-->
+    {{leader.username}}
+    {{#if pending_votes leader.playerID}}
+      has proposed {{#with pending_votes leader.playerID}}
+        <ul>
+          {{#each this}}
+            <li> {{this}} </li>
+          {{/each}}
+        </ul>
+        {{/with}}
+    {{else}}
+      is deciding
+    {{/if}}
+    <!-- voters of the round-->
+    {{#each voters}}
+      {{this.username}}
+        {{#if pending_votes this.playerID}}
+          has voted {{#with pending_votes this.playerID}} {{this}} {{/with}}
+        {{else}}
+          is deciding
+        {{/if}}
+        <br>
     {{/each}}
-  </table>
+
+
+  {{else}}
+    IN GAME:      <b>{{current_game_code}} </b> <br>
+  {{/if}}
+  <br>
 
 </template>
 
@@ -167,17 +200,19 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
           </button>
         </div>
         <div class="modal-body">
-            {{#if hidden_info.waiting_message}}
-              {{hidden_info.waiting_message}}
-            {{else}}
-              Your role: {{hidden_info.player_role}}
+            {{#if hidden_info.inprogress }}
+              Your team: {{hidden_info.player_role}}
               <br>
-              evil players:
-                <ul>
-                  {{#each hidden_info.evil_players}}
-                    <li>{{this.username}} </li>
-                  {{/each}}
-                </ul>
+              {{#if hidden_info.evil_players}}
+                evil players:
+                  <ul>
+                    {{#each hidden_info.evil_players}}
+                      <li>{{this.username}} </li>
+                    {{/each}}
+                  </ul>
+                {{/if}}
+            {{else}}
+              {{hidden_info.waiting_message}}
             {{/if}}
         </div>
         <div class="modal-footer">
@@ -246,4 +281,44 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
       </div>
     </div>
   </div>
+</template>
+
+
+<template name="main_intro_screen">
+You are a group of space adventurers. Your spaceship's 5 reactors have been turned off and you are stranded in space.
+
+Your crew has been infiltrated by rogue AI who are indistinguishable from humans.
+
+Your ships computer, "Merlin", has downloaded himself into one of your crew in order to help salvage the mission.
+Merlin knows who the rogue AI's are, but cannot openly communicate or else the evil AI will destroy him, rendering you all dead in space.
+Members of the "Good" team must work together, with Merlin's assistance, to prevent the "Evil" rogue AI from sabotaging the reactor cores.
+
+You will take turns selecting a group of individuals to venture forth and repair the reactors.
+
+If an "evil" rogue AI is among the group, they have the option to sabotage the reactor core.
+
+If "good" gets 3 reactor cores online, they are saved. If evil is able to sabotage 3 reactor cores, they win and good is destroyed.
+
+Good luck!
+
+
+          PLEASE LOG IN TO PLAY
+
+</template>
+
+
+<template name='game_over_screen'>
+GAME OVER
+
+{{winner}} prevails.
+
+</template>
+
+
+<template name='waiting_for_players'>
+  <ul>
+  {{#each player_list}}
+  <li>{{this}}</li>
+  {{/each}}
+  </ul>
 </template>

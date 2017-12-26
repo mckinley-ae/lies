@@ -11,6 +11,12 @@
   top: 0;
   box-sizing: border-box;
 }
+.left-side{
+  max-width: 70%
+}
+.invalid_proposal{
+  color: red;
+}
 ul{
   list-style-type: none;
 }
