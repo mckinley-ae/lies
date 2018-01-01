@@ -11,7 +11,8 @@ import './interface.js';
 
 Template.body.onCreated(function bodyOnCreated() {
   this.state = new ReactiveDict();
-  Meteor.subscribe('games')
+  Meteor.subscribe('games');
+  Meteor.subscribe('triggers');
 });
 
 

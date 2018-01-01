@@ -1,7 +1,7 @@
 import { Template } from 'meteor/templating';
 import { Session } from 'meteor/session'
-import { Games, game_rules_template} from '../api/gamedata.js';
-import { check_user_in_game, get_current_game, already_voted, get_player_list, checkbox_limit} from './general_functions.js'
+import { Games, Triggers, game_rules_template} from '../api/gamedata.js';
+import { fade, check_user_in_game, get_current_game, already_voted, get_player_list, checkbox_limit} from './general_functions.js'
 import './interface.html';
 
 
@@ -11,14 +11,32 @@ if (Meteor.isClient) {
 
   });
 
-  Template.body.onCreated(function() {
-      $(".fade-overlay").fadeIn();
+  Template.body.onRendered(function() {
+
+  });
+
+
+  Triggers.find().observe({
+    //monitors changes to Triggers database, calls animation functions
+    changed: function(newDocument, oldDocument) {
+      console.log(newDocument)
+      console.log(Session.get('gamecode'));
+      var gamecode = newDocument.code;
+      var trigger = newDocument.triggers[newDocument.triggers.length-1]
+      console.log(gamecode, trigger);
+      if (newDocument.gamecode == Session.get('gamecode')){
+        fade(newDocument.triggers[newDocument.triggers.length])
+      }
+    }
   });
 
 }
 
 
 Template.interface.helpers({
+  game_over(){
+    return get_current_game().gameOver
+  },
   logged_in(){
     return (Meteor.userId() != null) ? true : false;
   },
@@ -49,12 +67,11 @@ Template.interface.helpers({
   },
   chooseTemplate : function() {
     var game = get_current_game()
-    if (game == null){
+    if (game == undefined){
       return;
     }
     else if (game.inprogress == false){
       //game not started
-      console.log(game.inprogress);
       return 'waiting_for_players';
     }
     //chooses what template everyone see
@@ -76,10 +93,16 @@ Template.interface.helpers({
   },
   getVotes : function() {
     return game.turnRecords;
+  },
+  screen_overlay_message(){
+    return Session.get("screen_overlay_message");
   }
 });
 
 Template.interface.events({
+  'click .notreal'(){
+    fade('test session');
+  },
   'click .toggle-new-game'() {
     Meteor.call('interface.newGame');
   },
@@ -110,7 +133,7 @@ Template.leader.helpers({
   },
   num_players_allowed(){
     var game = get_current_game();
-    return game.turnRules.players_per_turn[game.currentTurn-1];
+    return game.turnRules.players_per_turn[game.gameRound];
   }
 });
 
@@ -119,7 +142,7 @@ Template.leader.events({
     // Prevent default browser form submit
     event.preventDefault();
     var game = get_current_game();
-    var num_players_allowed = game.turnRules.players_per_turn[game.currentTurn-1];
+    var num_players_allowed = game.turnRules.players_per_turn[game.gameRound];
     var gamecode = get_current_game().code
     var selected = template.findAll( "input[type=checkbox]:checked");
     var array = selected.map(function(item){ return item.value})
@@ -134,9 +157,7 @@ Template.leader.events({
     var parent = $(event.currentTarget).parent().parent();
     var num_checked = $(parent.find('input[class="party-checkbox"]:checked').length)[0];
     var game = get_current_game()
-    var num_players_allowed = game.turnRules.players_per_turn[game.currentTurn-1]
-    console.log(game.currentTurn)
-    console.log(num_checked)
+    var num_players_allowed = game.turnRules.players_per_turn[game.gameRound]
     if (num_checked > num_players_allowed){
       $('#'+event.target.id).prop('checked', false);
     }
@@ -172,14 +193,35 @@ Template.player_hud.helpers({
     return get_current_game().currentTurn
   },
   turn_instructions(){
-    var player = get_current_game().players.find(x => x.playerID === Meteor.userId());
-    var leader = get_current_game().players.find(x => x.role === 'leader');
-    //return player.role;
+    var game = get_current_game()
+    if (game == undefined){
+      return;
+    }
+    var player = game.players.find(x => x.playerID === Meteor.userId());
+    var leader = game.players.find(x => x.role === 'leader');
+    var current_turn = game.turnRecords.find(x => x.turn_number == game.currentTurn);
     //returns instructions based on role
+    if (game.pass_fail_round == true){
+      //if user is selected
+      var proposal = current_turn.votes.find(x => x.role === 'leader');
+      var user = Meteor.users.findOne({_id : Meteor.userId()});
+      if (proposal.proposal.includes(user.username)){
+        return 'You have been selected to venture outside the ship to repair the reactors.';
+      }
+      //if user isnt selected
+      else{
+        var proposal = current_turn.votes.find(x => x.role === 'leader');
+        var user = Meteor.users.findOne({_id : Meteor.userId()});
+        return "waiting for " + proposal.proposal.join(' and ') + " to attempt repair on the ship";
+      }
+    }
     switch (player.role){
       case 'voter':
         return 'vote on ' + leader.username +"'"+"s proposal";
       case 'leader':
+        if (already_voted()){
+          return "wait for everyone else to vote on your proposal";
+        }
         return 'decide which players you want to propose for your group';
       default:
         return 'you should never see this.';
@@ -245,6 +287,7 @@ Template.owner_toolbar.events({
       $('#alert_modal').modal('show');
 
     }
+    //fade('beginGame');
     Meteor.call('interface.beginGame', gamecode, Meteor.userId());
   },
   'click .advance-turn'(event, target){
@@ -272,9 +315,25 @@ Template.pass_fail_round_vote.helpers({
   is_evil(){
     var game = get_current_game();
     var player = game.players.find(x => x.playerID === Meteor.userId());
+    console.log(player.secretRole)
     return (player.secretRole == 'evil' ) ? true : false;
   },
-
+  has_voted_pass_fail(){
+    var game = get_current_game();
+    var current_turn = game.turnRecords.find(x => x.turn_number === game.currentTurn);
+    //console.log(current_turn.pass_fail_votes.find(x => x.playerID == Meteor.userId()));
+    if (game.currentTurn == 0){
+      return false;
+    }
+    if (current_turn.pass_fail_votes.find(x => x.playerID == Meteor.userId()) == undefined){
+      //hasn't voted
+      return false;
+    }
+    else{
+      //has voted
+      return true;
+    }
+  }
 })
 
 Template.pass_fail_round_vote.events({
@@ -317,24 +376,42 @@ Template.hidden_info_modal.helpers({
 
 Template.game_score.helpers({
   current_score(){
-    var game_score = get_current_game().currentScore.display;
+    var game = get_current_game();
+    if (game.inprogress == false){
+      return;
+    }
+    var game_score = game.currentScore.display;
+    var rules = game_rules_template[game.players.length];
     var display = [];
-    for (i = 0; i <= 5; i++){
+    for (i = 0; i < 5; i++){
+      var circle = {};
+      circle['num_players_round'] = rules.players_per_turn[i]
       if (i <= game_score.length){
         switch (game_score[i]){
           case 'good':
-            display.push('green');
+            circle['color'] = 'green'
             break;
           case 'evil':
-            display.push('red');
+            circle['color'] = 'red'
+            break;
+          default:
+            circle['color'] = 'grey'
             break;
         }
       }
       else{
-          display.push('grey')
+        circle['color'] = 'grey'
       }
+      display.push(circle);
     }
     return display;
+  },
+  num_evil_players(){
+    game = get_current_game();
+    if (game.inprogress == false){
+      return;
+    }
+    return game_rules_template[game.players.length].num_evil_players;
   }
 })
 
@@ -361,5 +438,11 @@ Template.game_over_screen.helpers({
 Template.waiting_for_players.helpers({
   player_list(){
     return get_player_list();
+  }
+})
+
+Template.screen_overlay.helpers({
+  screen_overlay_message(){
+    return Session.get('screen_overlay_message');
   }
 })

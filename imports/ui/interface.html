@@ -1,4 +1,5 @@
 <template name="interface">
+    <div id='screen-overlay'>{{>screen_overlay}}</div>
         {{> loginButtons}}
         {{> alert_modal}}
       {{#if logged_in}}
@@ -16,11 +17,11 @@
               {{> game_over_screen}}
             {{else}}
               <div class='left-side'>
-                <div class="container action-panel">
-                    {{> Template.dynamic template=chooseTemplate data=getGame}}
-                </div>
                 <div class="container info-panel">
                   {{> player_hud}}
+                </div>
+                <div class="container action-panel">
+                    {{> Template.dynamic template=chooseTemplate data=getGame}}
                 </div>
               </div>
             {{/if}}
@@ -42,10 +43,10 @@
   You are the leader this turn.
   {{#if already_voted}}
   <br>
-    you have already voted
+    you have voted
   {{else}}
   <form class='action-form'>
-    Select {{num_players_allowed}} players for your party!
+    Select {{num_players_allowed}} people to go repair a reactor!
     <ul>
       {{#each players}}
         <li>
@@ -70,7 +71,7 @@
 
 
 <template name='voter'>
-**YOU ARE A VOTER**
+Do you trust this repair crew to safely repair the reactors?
   {{#if get_proposal}}
     <ul>
     {{#each get_proposal}}
@@ -91,8 +92,18 @@
 
 <template name='game_score'>
   <div class="game_score_display">
+    <div class='num_evil_players'>
+      {{num_evil_players}} Evil AI
+    </div>
+    <div class="rotate game_score_identifier">
+      Reactor Cores
+    </div>
     {{#each current_score}}
-      <div class="circle {{this}}"></div>
+      <div class="circle {{this.color}}">
+        <div class='number'>
+          {{this.num_players_round}}
+        </div>
+      </div>
     {{/each}}
   </div>
 </template>
@@ -101,10 +112,9 @@
   {{#if owner_admin}}
   <div id='owner_toolbar' class='owner-toolbar'>
     {{#if game_not_started}}
-    <button class="btn btn-outline-info start-game btn-block" value={{current_game_code}}>Start Game</button>
+    <button class="btn btn-outline-info start-game btn-block" style="width: 100%;" value={{current_game_code}}>Start Game</button>
     {{/if}}
-    <button class="btn btn-outline-info show_modal">End Game</button>
-
+    <button class="btn btn-outline-info show_modal" style="width: 100%;">End Game</button>
 
     <div class="modal fade" id="end_game_modal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
@@ -134,13 +144,17 @@
 
 
 <template name='pass_fail_round_vote'>
-  YOU ARE SELECTED TO VOTE IN THE PASS FAIL ROUND
+  You have been selected to venture outside and repair the reactors. You must choose to repair or sabatage.
   <br>
-  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Repair</button>
-  {{#if is_evil}}
-  <button class='"btn btn-outline-info vote-on-pass-fail' value='no'>Sabotage</button>
+  {{#if has_voted_pass_fail}}
+      You have already chosen.
   {{else}}
-  <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Repair</button>
+    <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Repair</button>
+    {{#if is_evil}}
+    <button class='"btn btn-outline-info vote-on-pass-fail' value='no'>Sabotage</button>
+    {{else}}
+    <button class='"btn btn-outline-info vote-on-pass-fail' value='yes'>Repair</button>
+    {{/if}}
   {{/if}}
 </template>
 
@@ -150,31 +164,36 @@ YOU ARE WAITING FOR THE PASS/FAIL ROUND TO FINISH
 
 <template name='player_hud'>
   {{#if game_not_started}}
-    What you need to do right now: {{turn_instructions}} <br>
-
+  <b>  What you need to do right now: </b>
+    <br> {{turn_instructions}} <br>
+    <br>
+    <div class='voting-summary'>
     <!--leader of the round-->
-    {{leader.username}}
-    {{#if pending_votes leader.playerID}}
-      has proposed {{#with pending_votes leader.playerID}}
-        <ul>
-          {{#each this}}
-            <li> {{this}} </li>
-          {{/each}}
-        </ul>
-        {{/with}}
-    {{else}}
-      is deciding
-    {{/if}}
-    <!-- voters of the round-->
-    {{#each voters}}
-      {{this.username}}
-        {{#if pending_votes this.playerID}}
-          has voted {{#with pending_votes this.playerID}} {{this}} {{/with}}
-        {{else}}
-          is deciding
-        {{/if}}
+      {{leader.username}}
+      {{#if pending_votes leader.playerID}}
+        has proposed {{#with pending_votes leader.playerID}}
+          <ul>
+            {{#each this}}
+              <li> {{this}} </li>
+            {{/each}}
+          </ul>
+          {{/with}}
+      {{else}}
+        is deciding
         <br>
-    {{/each}}
+      {{/if}}
+      <!-- voters of the round-->
+      <div id='player-votes'>
+        {{#each voters}}
+          {{#if pending_votes this.playerID}}
+            <span class='{{#with pending_votes this.playerID}} {{this}} {{/with}}'> {{this.username}} </span>
+          {{else}}
+            <span class='deciding'> {{this.username}} </span>
+          {{/if}}
+          <br>
+        {{/each}}
+      </div>
+    </div>
 
 
   {{else}}
@@ -321,4 +340,10 @@ GAME OVER
   <li>{{this}}</li>
   {{/each}}
   </ul>
+</template>
+
+<template name='screen_overlay'>
+  <div>
+    {{screen_overlay_message}}
+  </div>
 </template>
